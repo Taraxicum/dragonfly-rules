@@ -1,19 +1,43 @@
 #Many of these mappings are adapted from the examples of others.  In particular
 #  many of them are adapted from https://github.com/AshleyF/VimSpeak/blob/master/Main.fs
 
+from dragonfly import (Grammar, AppContext, MappingRule, Dictation, Key, Text, Integer, Text, Function, Choice, Window, FocusWindow)
+from _vim_context import VimContext
 
-from dragonfly import (Grammar, AppContext, MappingRule, Dictation, Key, Text, Integer, Text, Mimic, Function, Choice, Window, FocusWindow)
-vi = AppContext(title='vi')
-gvim = AppContext(executable='gvim') #, title='command')
-  #One thought I have is setting the title in vim based on what mode it is in, then having different grammars for different modes.  Not sure if that will be useful enough to hassle with yet, so for now just going to try treating it all as the same dragon mode.
-grammar = Grammar("vim", context=(gvim | vi))
 
-noSpaceNoCaps = Mimic("\\no-caps-on") + Mimic("\\no-space-on")
-noCaps = Mimic("\\no-caps")
+insert = VimContext(mode='i')
+normal = VimContext(mode='n')
+visual = VimContext(mode='V')
+
+grammar = Grammar("vim", context=normal)
 
 def lower_case(text):
   print str(text).lower()
   Text(str(text).lower()).execute()
+
+surroundTypeMap = {
+    "(paren | parenthesis)" : ")",
+    "brace" : "}",
+    "bracket" : "]",
+    "angle" : ">",
+    "quote" : "\"",
+    "single quote" : "'"
+    }
+
+targetMap = {
+     "(word | words)" : "w",
+    "(paren | parenthesis)" : ")",
+    "brace" : "}",
+    "bracket" : "]",
+    "angle" : ">",
+    "quote" : "\"",
+    "single quote" : "'",
+    "line" : "s"
+     }
+designatorMap = {
+    "inner" : "i",
+    "outer" : "o"
+    }
 
 letterMap = {
     "alpha": "a",
@@ -55,11 +79,13 @@ rules = MappingRule(
       "big append" : Key("A"),
       "undo" : Key("u"),
       "[<n>] delete letter" : Text("%(n)dx"),
-      "yank" : Key("y"),
-      "delete" : Key("d"),
+      "yank [<n>] [<designator>] [<target>]" : Text("y%(n)d%(designator)s%(target)s"),
+      "change [<n>] [<designator>] [<target>]" : Text("c%(n)d%(designator)s%(target)s"),
+      "delete [<n>] [<designator>] [<target>]" : Text("d%(n)d%(designator)s%(target)s"),
       "explore"      : Text(":E\n"),
       "close buffer" : Text(":close\n"),
       "save file"    : Text(":w\n"),
+      "surround [<n>] [<designator>] <target> [<surrounder>]" : Text("ys%(n)d%(designator)s%(target)s%(surrounder)s"),
       "[<n>] back"                         : Text("%(n)db"),
       "[<n>] back-word"                    : Text("%(n)db"),
       "[<n>] big-back"                     : Text("%(n)dB"),
@@ -118,6 +144,9 @@ rules = MappingRule(
       extras = [
           Integer("n", 1, 1000),
           Choice("c", letterMap),
+          Choice("target", targetMap),
+          Choice("designator", designatorMap),
+          Choice("surrounder", surroundTypeMap),
           Dictation("text"),
           Dictation("m", format=False)
       ],
