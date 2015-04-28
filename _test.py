@@ -1,5 +1,5 @@
 from dragonfly import (Grammar, AppContext, MappingRule, Function)
-from _vim_context import VimContext
+from vim_context import VimContext
 
 normal_vim = VimContext(mode='n')
 insert_vim = VimContext(mode='i')
