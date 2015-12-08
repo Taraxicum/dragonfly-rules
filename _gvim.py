@@ -12,30 +12,98 @@ visual = VimContext(mode='V')
 insert_grammar = Grammar("vim", context=insert)
 normal_grammar = Grammar("vim", context=normal)
 
-surroundTypeMap = {
+surrounders = {
     "(paren | parenthesis)" : ")",
-    "brace"                 : "}",
-    "bracket"               : "]",
-    "angle"                 : ">",
-    "quote"                 : "\"",
-    "single quote"          : "'"
+    "brace" : "}",
+    "angle" : ">",
+    "bracket" : "]",
+    "quote" : "\"",
+    "single quote" : "'"
     }
 
-targetMap = {
-    "(word | words)"       : "w",
-    "letter"               : "l",
-    "(paren | parenthesis)" : ")",
-    "brace"                 : "}",
-    "bracket"               : "]",
-    "angle"                 : ">",
-    "quote"                 : "\"",
-    "single quote"          : "'",
-    "line"                  : "s"
+char_motions = {
+    "til" : "t",
+    "back-til" : "T",
+    "find" : "f",
+    "back-find" : "F"
     }
-designatorMap = {
+
+text_motions = {
+    "search" : "/"
+    }
+
+bare_motions = {
+    "left" : "h",
+    "right" : "l",
+    "up" : "k",
+    "down" : "j",
+    "word" : "w",
+    "big-word" : "W",
+    "back" : "b",
+    "big-back" : "B",
+    "end" : "e",
+    "big-end" : "E",
+    "start-of-line" : "^",
+    "end-of-line" : "$",
+    "zero" : "0", 
+    "column" : "|",
+    "match bracket" : "%",
+    "next" : "n",
+    "previous" : "N",
+    "top screen line" : "M",
+    "middle screen line" : "M",
+    "bottom screen line" : "L",
+    "(doc | document) line" : "G",
+    "start [of] sentence" : "(",
+    "end [of] sentence" : ")",
+    "start [of] paragraph" : "{",
+    "end [of] paragraph" : "}",
+    "end [of] (document | file)" : "G",
+    "start [of] (document | file)" : "gg"
+    }
+
+text_objects = {
+    "quote" : '"',
+    "single-quote" : "'",
+    "(paren | parenthesis)" : "(",
+    "angle [bracket]" : "<",
+    "bracket" : "[",
+    "brace" : "{",
+    "paragraph" : "p",
+    "sentence" : "s",
+    "tag block" : "t",
+    "word" : "w",
+    "letter" : "l"
+    }
+text_operators = {
+    "dell" : "d",
+    "(yank | copy)" : "y",
+    "change" : "c",
+    }
+
+bare_operators = {
+    "paste" : "p",
+    "back-paste" : "P",
+    "join" : "J",
+    "change case" : "~"
+    }
+
+modifiers = {
     "inner" : "i",
     "outer" : "a"
     }
+numberMap = {
+        "one" : 1,
+        "two" : 2,
+        "three" : 3,
+        "four" : 4,
+        "five" : 5,
+        "six" : 6,
+        "seven" : 7,
+        "eight" : 8,
+        "nine" : 9,
+        "zero" : 0
+        }
 
 letterMap = {
     "alpha"    : "a",
@@ -63,20 +131,26 @@ letterMap = {
     "whiskey"  : "w",
     "x-ray"    : "x",
     "yankee"   : "y",
-    "zulu"     : "z"
+    "zulu"     : "z",
+    "equal"    : "="
     }
 
+charMap = {}
+charMap.update(letterMap)
+charMap.update(numberMap)
 
 insert_rules = MappingRule(
     name = "vim-insert",
     mapping = {
       "letter <c>"       : Key("%(c)s"),
+      "text <text>"      : Text("%(text)s", pause=0),
       "upper letter <c>" : Key("s-%(c)s"),
       "normal [mode]"    : Key("escape"),
       "complete"         : Key("c-n")
     }, 
     extras = [
-        Choice("c", letterMap)
+        Choice("c", charMap),
+        Dictation("text")
         ]
     )
 
@@ -87,89 +161,80 @@ normal_rules = MappingRule(
       "upper letter <c>"                                        : Key("s-%(c)s"),
       "normal [mode]"                                           : Key("escape"),
       "insert [mode]"                                           : Key("i"),
+      "insert text <text>"                                      : Text("i%(text)s", pause=0)+Key("escape"),
       "visual [mode]"                                           : Key("v"),
       "visual line"                                             : Key("V"),
-      "visual block"                                            : Key("V"),
-      "append"                                                  : Key("a"),
-      "big append"                                              : Key("A"),
-      "undo"                                                    : Key("u"),
-      "[<n>] delete letter"                                     : Text("%(n)dx"),
-      "yank [<n>] [<designator>] [<target>]"                    : Text("y%(n)d%(designator)s%(target)s"),
-      "change [<n>] [<designator>] [<target>]"                  : Text("c%(n)d%(designator)s%(target)s"),
-      "delete [<n>] [<designator>] [<target>]"                  : Text("d%(n)d%(designator)s%(target)s"),
+      "visual block"                                            : Key("c-Q"),
+      "dell line"                                               : Text("dd"),
+      "(after | append)"                                                  : Key("a"),
+      "big (after | append)"                                              : Key("A"),
+      "[<n>] undo"                                              : Key("%(n)d,u"),
+      "[<n>] redo"                                              : Key("%(n)d,c-r"),
+      "<bare_motion>" : Text("%(bare_motion)s"),
+      "<n> <bare_motion>" : Text("%(n)d%(bare_motion)s"),
+      "[<n>] <char_motion> <char>" : Text("%(n)d%(char_motion)s%(char)s"),
+      "[<n>] <text_motion> <text>" : Text("%(n)d%(text_motion)s%(text)s", pause=0),
+      "[<n>] <bare_operator>" : Text("%(n)d%(bare_operator)s"),
+      "[<n>] <text_operator>[<n2>] [<modifier>]<text_object>" :
+          Text("%(n)d%(text_operator)s%(n2)d%(modifier)s%(text_object)s"),
+      "[<n>] <text_operator>[<n2>] <bare_motion>" :
+          Text("%(n)d%(text_operator)s%(n2)d%(modifier)s%(bare_motion)s"),
+      "[<n>] <text_operator> [<n>] <char_motion> <char>" :
+          Text("%(n)d%(text_operator)s%(char_motion)s%(char)s"),
+      "[<n>] <text_operator> [<n>] <text_motion> <text>" : 
+          Text("%(n)d%(bare_operator)s%(char_motion)s%(text)s", pause=0),
+      "surround [<n>] [<modifier>] [<text_object>] [<surrounder>]" :
+          Text("ys%(n)d%(modifier)s%(text_object)s%(surrounder)s"),
+      "surround [<n>] [<modifier>] [<bare_motion>] [<surrounder>]" :
+          Text("ys%(n)d%(modifier)s%(bare_motion)s%(surrounder)s"),
       "explore"                                                 : Text(":E\n"),
       "close buffer"                                            : Text(":close\n"),
       "save file"                                               : Text(":w\n"),
-      "surround [<n>] [<designator>] [<target>] [<surrounder>]" : Text("ys%(n)d%(designator)s%(target)s%(surrounder)s"),
-      "[<n>] back"                                              : Text("%(n)db"),
-      "[<n>] back-word"                                         : Text("%(n)db"),
-      "[<n>] big-back"                                          : Text("%(n)dB"),
-      "[<n>] big-back-word"                                     : Text("%(n)dB"),
       "record macro [<c>]"                                      : Text("q%(c)s"),
       "[<n>] run macro [<c>]"                                   : Text("%(n)d@%(c)s"),
       "end macro"                                               : Key("q"),
-      "[<n>] end"                                               : Text("%(n)de"),
-      "[<n>] big-end"                                           : Text("%(n)dE"),
-      "[<n>] back-end"                                          : Text("%(n)dge"),
-      "[<n>] back-big-end"                                      : Text("%(n)dgE"),
-      "[<n>] left"                                              : Text("%(n)dh"),
-      "[<n>] down"                                              : Text("%(n)dj"),
-      "[<n>] up"                                                : Text("%(n)dk"),
-      "[<n>] right"                                             : Text("%(n)dl"),
-      "next"                                                    : Text("n"),
-      "next-reversed"                                           : Text("N"),
-      "previous"                                                : Text("N"),
-      "column-zero"                                             : Key("0"),
-      "column"                                                  : Text("|"),
-      "start-of-line"                                           : Text("^"),
-      "end-of-line"                                             : Text("$"),
       "search-under-cursor"                                     : Text("*"),
       "search-under-cursor-reversed"                            : Text("#"),
       "again"                                                   : Text(";"),
       "again-reversed"                                          : Text(","),
-      "down-sentence"                                           : Text(")"),
-      "up-sentence"                                             : Text("("),
-      "down-paragraph"                                          : Text("}"),
-      "up-paragraph"                                            : Text("{"),
       "start-of-next-section"                                   : Text("]]"),
       "start-of-previous-section"                               : Text("[["),
       "end-of-next-section"                                     : Text("]["),
       "end-of-previous-section"                                 : Text("[]"),
       "matching"                                                : Text("%"),
-      "down-line"                                               : Text("+"),
-      "up-line"                                                 : Text("-"),
-      "first-character"                                         : Text("_"),
       "cursor-home"                                             : Text("H"),
       "cursor-middle"                                           : Text("M"),
       "cursor-last"                                             : Text("L"),
-      "start-of-document"                                       : Text("gg"),
-      "end-of-document"                                         : Text("G"),
       "retrace-movements"                                       : Text("<C-o>"),
       "retrace-movements-forward"                               : Text("<C-i>"),
-      "jump-to-mark"                                            : Text("'"),
-      "mark [letter] <c>"                                       : Text("%(m)s%(c)s"),
-      "find"                                                    : Text("f"),
-      "find-reversed"                                           : Text("F"),
-      "till"                                                    : Text("t"),
-      "till-reversed"                                           : Text("T"),
-      "search [<text>]"                                         : Text("/%(text)s"),
+      "jump-to <c>"                                             : Text("`%(c)s"),
+      "mark [letter] <c>"                                       : Text("m%(c)s"),
       "search-reversed"                                         : Text(","),
-      "word"                                                    : Text(","),
-      "big-word"                                                : Text(",")
       },
       extras = [
           Integer("n", 1, 1000),
+          Integer("n2", 1, 1000),
           Choice("c", letterMap),
-          Choice("target", targetMap),
-          Choice("designator", designatorMap),
-          Choice("surrounder", surroundTypeMap),
+          Choice("char", charMap), #TODO should not just be lettermap but all char options
+          Choice("bare_operator", bare_operators),
+          Choice("text_operator", text_operators),
+          Choice("bare_motion", bare_motions),
+          Choice("char_motion", char_motions),
+          Choice("text_motion", text_motions),
+          Choice("text_object", text_objects),
+          Choice("modifier", modifiers),
+          Choice("surrounder", surrounders),
           Dictation("text"),
           Dictation("m", format=False)
       ],
       defaults = {
           "n": 1,
+          "n2": 1,
           "designator": "",
           "c": "",
+          "char": "",
+          "text_object": "",
+          "modifier": "",
           "m": "@"
       })
 
@@ -180,6 +245,7 @@ insert_grammar.load()                                      # Load the grammar.
 normal_grammar.load()                                      # Load the grammar.
 
 def unload():
+  
   global insert_grammar, normal_grammar
   if insert_grammar: insert_grammar.unload()
   if normal_grammar: normal_grammar.unload()

@@ -8,6 +8,7 @@ class VimContext(AppContext):
     # Initialization methods.
 
     def __init__(self, title=None, mode=None, exclude=False):
+        #print "initializing VimContext"
         executable = "vim.exe"
         AppContext.__init__(self, executable, title, exclude)
 
@@ -26,6 +27,8 @@ class VimContext(AppContext):
     # Matching methods.
 
     def matches(self, executable, title, handle):
+        #print "matches method in VimContext"
+        #print "arguments {}, {}, {}".format(executable, title, handle)
         executable = executable.lower()
         title = title.lower()
         if AppContext.matches(self, executable, title, handle):

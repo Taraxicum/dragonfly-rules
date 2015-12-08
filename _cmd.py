@@ -8,7 +8,8 @@ grammar = Grammar("command", context=command)
 rules = MappingRule(
     name = "command",
     mapping = {
-      "go to natlink": Text("d:\ncd \\Natlink\\Natlink\\MacroSystem\n")
+      "go to natlink": Text("d:\ncd \\Natlink\\Natlink\\MacroSystem\n", pause=0),
+      "go to kaggle": Text("d:\ncd \"\\Workspace\\data\\kaggle forest cover\"\n", pause=0)
       },
     extras = [
       Dictation("text", format=False)
